@@ -1,0 +1,77 @@
+import cv2
+import os
+import time
+import threading
+from flask import Flask, render_template
+import os
+
+# ----------------------------
+# CREATE EVIDENCE FOLDER
+# ----------------------------
+if not os.path.exists("evidence"):
+    os.makedirs("evidence")
+
+# ----------------------------
+# FLASK APP (DASHBOARD)
+# ----------------------------
+app = Flask(__name__)
+
+@app.route('/')
+def dashboard():
+    images = os.listdir("evidence") if os.path.exists("evidence") else []
+    images = ["evidence/" + img for img in images]
+    return render_template("dashboard.html", images=images)
+
+def run_flask():
+    app.run(debug=False, use_reloader=False)
+
+# ----------------------------
+# DETECTION SYSTEM
+# ----------------------------
+def run_detection():
+    cap = cv2.VideoCapture(0)
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        h, w, _ = frame.shape
+
+        # restricted line
+        cv2.line(frame, (0, h//2), (w, h//2), (0, 255, 0), 2)
+
+        # DEMO LOGIC (replace with YOLO later)
+        detected = True
+
+        if detected:
+            cv2.putText(frame, "ALERT: Suspicious Activity",
+                        (50, 50),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1, (0, 0, 255), 2)
+
+            filename = f"evidence/event_{int(time.time())}.jpg"
+            cv2.imwrite(filename, frame)
+
+            print("Evidence saved:", filename)
+            time.sleep(2)
+
+        cv2.imshow("Crime Detection System", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# ----------------------------
+# RUN BOTH TOGETHER
+# ----------------------------
+if __name__ == "__main__":
+
+    # Start Flask dashboard in background
+    flask_thread = threading.Thread(target=run_flask)
+    flask_thread.start()
+
+    # Start detection system
+    run_detection()
